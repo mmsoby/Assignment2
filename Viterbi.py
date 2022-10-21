@@ -40,7 +40,7 @@ class Viterbi:
                         lexical_counts[tag_and_word] = 1
             # Calculate lexical probabilities
             for tag_and_word in lexical_counts:
-                tag = self.__get_tag(tag_and_word)
+                word, tag = self.__get_word_and_tag(tag_and_word)
                 self.lexical_probabilities[tag_and_word] = lexical_counts[tag_and_word] / self.tag_frequencies[tag]
 
     def __get_bigram_probabilities(self):
@@ -53,7 +53,7 @@ class Viterbi:
                     if word == "\n":
                         continue
                     else:
-                        tags.append(self.__get_tag(word))
+                        tags.append(self.__get_word_and_tag(word)[1])
                 # Calculate bigram Counts
                 for i in range(len(tags)):
                     if i == 0:
@@ -80,7 +80,7 @@ class Viterbi:
                     if word == "\n":
                         continue
                     else:
-                        tag = self.__get_tag(word)
+                        tag = self.__get_word_and_tag(word)[1]
 
                     if tag in self.tag_frequencies:
                         self.tag_frequencies[tag] += 1
@@ -88,27 +88,22 @@ class Viterbi:
                         self.tag_frequencies[tag] = 1
 
     @staticmethod
-    def __get_tag(phrase):
+    def __get_word_and_tag(phrase):
         phrase = phrase.strip("\n")
         split = phrase.split("/")
         tag = split[len(split) - 1]
         if "|" in tag:
             tag = tag.split("|")[0]
-        return tag
-
-    @staticmethod
-    def __get_word(phrase):
-        phrase = phrase.strip("\n")
-        split = phrase.split("/")
         word = ""
         for i in range(len(split) - 1):
             word += split[i]
-        return word
+        return word.lower(), tag
 
     def __viterbi(self, sentence):
         Tags = list(self.tag_frequencies.keys())
         final_sequence = []
         # Initialization Step
+        initial_tag_is_set = False
         for tag in Tags:
             if tag == "<s>":
                 continue
@@ -119,8 +114,11 @@ class Viterbi:
                     tag_given_beginning]
                 final_score = math.fabs(math.log2(preliminary_score))
                 sentence[0].potential_tags.append(("<s>", tag, final_score))
+                initial_tag_is_set = True
             else:
                 sentence[0].potential_tags.append(("<s>", tag, 0))
+        if not initial_tag_is_set:
+            sentence[0].potential_tags.append(("<s>", "NN", 1))
 
         # Iteration Step
         for i in range(1, len(sentence)):
@@ -196,20 +194,17 @@ class Viterbi:
         open("POS.test.out", 'w').close()
         # Iterate over each line in the file
         with open(test_file, 'r') as f:
-            i = 0
             for line in f:
-                i += 1
-                if i > 6:
-                    break
                 sentence = []
                 # Iterate over each word in the line
                 for phrase in line.split(" "):
                     if phrase == "\n":
                         continue
-                    word = self.__get_word(phrase)
-                    tag = self.__get_tag(phrase)
+                    word, tag = self.__get_word_and_tag(phrase)
                     sentence.append(Word(word, tag))
+
                 predicted = self.__viterbi(sentence)
+
                 # Print the predicted tags to a file
                 with open("POS.test.out", 'a') as out:
                     for i in range(len(sentence)):
