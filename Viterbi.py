@@ -96,6 +96,15 @@ class Viterbi:
             tag = tag.split("|")[0]
         return tag
 
+    @staticmethod
+    def __get_word(phrase):
+        phrase = phrase.strip("\n")
+        split = phrase.split("/")
+        word = ""
+        for i in range(len(split) - 1):
+            word += split[i]
+        return word
+
     def __viterbi(self, sentence):
         Tags = list(self.tag_frequencies.keys())
         final_sequence = []
@@ -143,6 +152,7 @@ class Viterbi:
         max_tag = self.__highest_scoring_tag(
             sentence[len(sentence) - 1].potential_tags)
         sentence[len(sentence) - 1].believed_tag = max_tag[1]
+        final_sequence.append(max_tag[1])
         for i in range(len(sentence) - 2, -1, -1):
             sentence[i].believed_tag = max_tag[0]
             final_sequence.append(max_tag[0])
@@ -186,14 +196,18 @@ class Viterbi:
         open("POS.test.out", 'w').close()
         # Iterate over each line in the file
         with open(test_file, 'r') as f:
+            i = 0
             for line in f:
+                i += 1
+                if i > 6:
+                    break
                 sentence = []
                 # Iterate over each word in the line
                 for phrase in line.split(" "):
                     if phrase == "\n":
                         continue
-                    word = phrase.split("/")[0]
-                    tag = phrase.split("/")[1]
+                    word = self.__get_word(phrase)
+                    tag = self.__get_tag(phrase)
                     sentence.append(Word(word, tag))
                 predicted = self.__viterbi(sentence)
                 # Print the predicted tags to a file
