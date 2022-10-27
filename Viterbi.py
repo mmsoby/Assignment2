@@ -34,6 +34,8 @@ class Viterbi:
                 for tag_and_word in line.split(" "):
                     if tag_and_word == "\n":
                         continue
+                    word, tag = self.__get_word_and_tag(tag_and_word)
+                    tag_and_word = word + "/" + tag
                     if tag_and_word in lexical_counts:
                         lexical_counts[tag_and_word] += 1
                     else:
@@ -67,7 +69,7 @@ class Viterbi:
 
         # Calculate bigram probabilities
         for bigram in bigram_counts:
-            tag = bigram.split("/")[0]
+            word, tag = self.__get_word_and_tag(bigram)
             self.bigram_probabilities[bigram] = bigram_counts[bigram] / self.tag_frequencies[tag]
 
     def __get_tag_frequencies(self):
@@ -80,7 +82,7 @@ class Viterbi:
                     if word == "\n":
                         continue
                     else:
-                        tag = self.__get_word_and_tag(word)[1]
+                        word, tag = self.__get_word_and_tag(word)
 
                     if tag in self.tag_frequencies:
                         self.tag_frequencies[tag] += 1
@@ -97,7 +99,7 @@ class Viterbi:
         word = ""
         for i in range(len(split) - 1):
             word += split[i]
-        return word.lower(), tag
+        return word, tag
 
     def __viterbi(self, sentence):
         Tags = list(self.tag_frequencies.keys())
@@ -108,17 +110,17 @@ class Viterbi:
             if tag == "<s>":
                 continue
             word_given_tag = sentence[0].word + "/" + tag
-            tag_given_beginning = "<s>/" + tag
+            tag_given_beginning = '<s>/' + tag
             if word_given_tag in self.lexical_probabilities and tag_given_beginning in self.bigram_probabilities:
                 preliminary_score = self.lexical_probabilities[word_given_tag] * self.bigram_probabilities[
                     tag_given_beginning]
                 final_score = math.fabs(math.log2(preliminary_score))
-                sentence[0].potential_tags.append(("<s>", tag, final_score))
+                sentence[0].potential_tags.append(('<s>', tag, final_score))
                 initial_tag_is_set = True
             else:
-                sentence[0].potential_tags.append(("<s>", tag, 0))
+                sentence[0].potential_tags.append(('<s>', tag, 0))
         if not initial_tag_is_set:
-            sentence[0].potential_tags.append(("<s>", "NN", 1))
+            sentence[0].potential_tags.append(('<s>', 'NN', 1))
 
         # Iteration Step
         for i in range(1, len(sentence)):
@@ -144,7 +146,7 @@ class Viterbi:
             if not valueSet:
                 sentence[i].potential_tags.remove((None, 'NN', 0))
                 sentence[i].potential_tags.append(
-                    (self.__highest_scoring_tag(sentence[i - 1].potential_tags)[1], "NN", 1))
+                    (self.__highest_scoring_tag(sentence[i - 1].potential_tags)[1], 'NN', 1))
 
         # Sequence Identification
         max_tag = self.__highest_scoring_tag(
@@ -181,6 +183,8 @@ class Viterbi:
         max_tag = None
         max_score = 0
         for previous_tag in previous_word.potential_tags:
+            if previous_tag[2] == 0:
+                continue
             tag_given_tag = previous_tag[1] + "/" + my_tag
             if tag_given_tag in self.bigram_probabilities:
                 score = previous_tag[2] * self.bigram_probabilities[tag_given_tag]
@@ -217,10 +221,12 @@ class Viterbi:
                     self.count_of_tags += 1
 
     def printAccuracy(self):
+        accuracy = self.count_of_correctly_labeled_tags / self.count_of_tags
         if self.count_of_tags == 0:
             print("Accuracy not calculated yet")
         else:
-            print("Accuracy: " + str(self.count_of_correctly_labeled_tags / self.count_of_tags))
+            # Print accuracy as percentage rounded to 2 decimal places
+            print("Accuracy: " + str(round(accuracy * 100, 2)) + "%")
 
 
 def main(argv):
