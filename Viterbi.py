@@ -117,9 +117,12 @@ class Viterbi:
 
     @staticmethod
     def __get_tag_obj_for_tag(tag, word):
+        response = False
         for tag_obj in word.potential_tags:
             if tag_obj[1] == tag:
                 return tag_obj
+        if response is False:
+            return None
 
     @staticmethod
     def __highest_scoring_tag(potential_tags):
@@ -132,6 +135,7 @@ class Viterbi:
         return max_tag
 
     def __viterbi(self, sentence):
+        log_constant = 1
         Tags = list(self.tag_frequencies.keys())
         final_sequence = []
         # Initialization Step
@@ -142,13 +146,11 @@ class Viterbi:
             word_given_tag = sentence[0].word + "/" + tag
             tag_given_beginning = '<s>/' + tag
             if word_given_tag in self.lexical_probabilities and tag_given_beginning in self.bigram_probabilities:
-                preliminary_score = self.lexical_probabilities[word_given_tag] * self.bigram_probabilities[
-                    tag_given_beginning]
-                final_score = math.fabs(math.log2(preliminary_score))
+                preliminary_score = math.log2(log_constant + self.lexical_probabilities[word_given_tag]) + math.log2(
+                    log_constant + self.bigram_probabilities[tag_given_beginning])
+                final_score = preliminary_score
                 sentence[0].potential_tags.append(('<s>', tag, final_score))
                 initial_tag_is_set = True
-            else:
-                sentence[0].potential_tags.append(('<s>', tag, 0))
         if not initial_tag_is_set:
             sentence[0].potential_tags.append(('<s>', 'NN', 1))
 
@@ -162,23 +164,18 @@ class Viterbi:
                 if word_given_tag in self.lexical_probabilities:
                     previous_word = sentence[i - 1]
                     max_tag, max_score = self.__get_max_tag_and_score(tag, previous_word)
-                    if max_score == 0:
-                        sentence[i].potential_tags.append((None, tag, 0))
-                        continue
-                    final_score = math.fabs(math.log2(max_score * self.lexical_probabilities[word_given_tag]))
-                    sentence[i].potential_tags.append((max_tag, tag, final_score))
-                    valueSet = True
-                else:
-                    sentence[i].potential_tags.append((None, tag, 0))
+                    if max_tag is not None:
+                        final_score = math.log2(log_constant + max_score) + \
+                                      math.log2(log_constant + self.lexical_probabilities[word_given_tag])
+                        sentence[i].potential_tags.append((max_tag, tag, final_score))
+                        valueSet = True
 
             if not valueSet:
-                sentence[i].potential_tags.remove((None, 'NN', 0))
                 sentence[i].potential_tags.append(
                     (self.__highest_scoring_tag(sentence[i - 1].potential_tags)[1], 'NN', 1))
 
         # Sequence Identification
-        max_tag = self.__highest_scoring_tag(
-            sentence[len(sentence) - 1].potential_tags)
+        max_tag = self.__highest_scoring_tag(sentence[len(sentence) - 1].potential_tags)
         sentence[len(sentence) - 1].believed_tag = max_tag[1]
         final_sequence.append(max_tag[1])
         for i in range(len(sentence) - 2, -1, -1):
