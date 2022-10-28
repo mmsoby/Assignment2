@@ -1,0 +1,19 @@
+# Program completion
+- My program is fully complete.
+
+# Viterbi accuracy
+- The accuracy of my program with the small dataset is 92.27%.
+
+# Baseline accuracy
+- The accuracy of my baseline-small dataset is 85.67%.
+
+# Three errors in my program
+- Words that start the beginning of a sentence seem to give the most trouble at labeling properly. I think that is
+because by then the algorithm has already had to make some guesses along the way. I think it could be fixed by
+implementing some more rules based methods.
+- My program seems to confuse RB and JJ very easily. I think this is because they are both similar in their usages. I
+think it could be fixed by checking the type of the word after it.
+- Lastly, words that have occurred in my corpus but not with the same capitalization as the testing set sometimes cause
+an out-of-vocabulary problem. To fix that I would have to check for if the word exists in the corpus but compare them
+as both lowercase.
+
