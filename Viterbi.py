@@ -34,7 +34,7 @@ class Viterbi:
                 for tag_and_word in line.split(" "):
                     if tag_and_word == "\n":
                         continue
-                    word, tag = self.__get_word_and_tag(tag_and_word)
+                    word, tag = self._get_word_and_tag(tag_and_word)
                     tag_and_word = word + "/" + tag
                     if tag_and_word in lexical_counts:
                         lexical_counts[tag_and_word] += 1
@@ -42,7 +42,7 @@ class Viterbi:
                         lexical_counts[tag_and_word] = 1
             # Calculate lexical probabilities
             for tag_and_word in lexical_counts:
-                word, tag = self.__get_word_and_tag(tag_and_word)
+                word, tag = self._get_word_and_tag(tag_and_word)
                 self.lexical_probabilities[tag_and_word] = lexical_counts[tag_and_word] / self.tag_frequencies[tag]
 
     def __get_bigram_probabilities(self):
@@ -55,7 +55,7 @@ class Viterbi:
                     if word == "\n":
                         continue
                     else:
-                        tags.append(self.__get_word_and_tag(word)[1])
+                        tags.append(self._get_word_and_tag(word)[1])
                 # Calculate bigram Counts
                 for i in range(len(tags)):
                     if i == 0:
@@ -69,7 +69,7 @@ class Viterbi:
 
         # Calculate bigram probabilities
         for bigram in bigram_counts:
-            word, tag = self.__get_word_and_tag(bigram)
+            word, tag = self._get_word_and_tag(bigram)
             self.bigram_probabilities[bigram] = bigram_counts[bigram] / self.tag_frequencies[tag]
 
     def __get_tag_frequencies(self):
@@ -82,15 +82,29 @@ class Viterbi:
                     if word == "\n":
                         continue
                     else:
-                        word, tag = self.__get_word_and_tag(word)
+                        word, tag = self._get_word_and_tag(word)
 
                     if tag in self.tag_frequencies:
                         self.tag_frequencies[tag] += 1
                     else:
                         self.tag_frequencies[tag] = 1
 
+    def __get_max_tag_and_score(self, my_tag, previous_word):
+        max_tag = None
+        max_score = 0
+        for previous_tag in previous_word.potential_tags:
+            if previous_tag[2] == 0:
+                continue
+            tag_given_tag = previous_tag[1] + "/" + my_tag
+            if tag_given_tag in self.bigram_probabilities:
+                score = previous_tag[2] * self.bigram_probabilities[tag_given_tag]
+                if score > max_score:
+                    max_score = score
+                    max_tag = previous_tag[1]
+        return max_tag, max_score
+
     @staticmethod
-    def __get_word_and_tag(phrase):
+    def _get_word_and_tag(phrase):
         phrase = phrase.strip("\n")
         split = phrase.split("/")
         tag = split[len(split) - 1]
@@ -100,6 +114,22 @@ class Viterbi:
         for i in range(len(split) - 1):
             word += split[i]
         return word, tag
+
+    @staticmethod
+    def __get_tag_obj_for_tag(tag, word):
+        for tag_obj in word.potential_tags:
+            if tag_obj[1] == tag:
+                return tag_obj
+
+    @staticmethod
+    def __highest_scoring_tag(potential_tags):
+        max_score = 0
+        max_tag = None
+        for tag in potential_tags:
+            if tag[2] > max_score:
+                max_score = tag[2]
+                max_tag = tag
+        return max_tag
 
     def __viterbi(self, sentence):
         Tags = list(self.tag_frequencies.keys())
@@ -128,8 +158,6 @@ class Viterbi:
             max_tag = None
             valueSet = False
             for tag in Tags:
-                if tag == "<s>":
-                    continue
                 word_given_tag = sentence[i].word + "/" + tag  # Time/NN
                 if word_given_tag in self.lexical_probabilities:
                     previous_word = sentence[i - 1]
@@ -163,36 +191,6 @@ class Viterbi:
 
         return final_sequence
 
-    @staticmethod
-    def __get_tag_obj_for_tag(tag, word):
-        for tag_obj in word.potential_tags:
-            if tag_obj[1] == tag:
-                return tag_obj
-
-    @staticmethod
-    def __highest_scoring_tag(potential_tags):
-        max_score = 0
-        max_tag = None
-        for tag in potential_tags:
-            if tag[2] > max_score:
-                max_score = tag[2]
-                max_tag = tag
-        return max_tag
-
-    def __get_max_tag_and_score(self, my_tag, previous_word):
-        max_tag = None
-        max_score = 0
-        for previous_tag in previous_word.potential_tags:
-            if previous_tag[2] == 0:
-                continue
-            tag_given_tag = previous_tag[1] + "/" + my_tag
-            if tag_given_tag in self.bigram_probabilities:
-                score = previous_tag[2] * self.bigram_probabilities[tag_given_tag]
-                if score > max_score:
-                    max_score = score
-                    max_tag = previous_tag[1]
-        return max_tag, max_score
-
     def test(self, test_file):
         # Clear out file
         open("POS.test.out", 'w').close()
@@ -204,7 +202,7 @@ class Viterbi:
                 for phrase in line.split(" "):
                     if phrase == "\n":
                         continue
-                    word, tag = self.__get_word_and_tag(phrase)
+                    word, tag = self._get_word_and_tag(phrase)
                     sentence.append(Word(word, tag))
 
                 predicted = self.__viterbi(sentence)
@@ -218,6 +216,9 @@ class Viterbi:
                 for i in range(len(sentence)):
                     if sentence[i].ground_truth_tag == predicted[i]:
                         self.count_of_correctly_labeled_tags += 1
+                    else:
+                        # print(sentence[i].word + " " + sentence[i].ground_truth_tag + " " + predicted[i])
+                        pass
                     self.count_of_tags += 1
 
     def printAccuracy(self):
